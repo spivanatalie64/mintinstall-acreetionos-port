@@ -1908,12 +1908,21 @@ class Application(Gtk.Application):
         dlg.show()
 
     def export_listing(self, flatpak_only=False):
+        # ACREETIONOS-ARCH: on Arch there is no /var/lib/apt/lists; check pacman db instead.
+        # Keep the apt check for Debian parity, but don't hard-fail when apt db is absent.
         if not flatpak_only:
-            for filename in os.listdir("/var/lib/apt/lists/"):
-                if "i18n" in filename and not filename.endswith("-en"):
-                    print("Your APT cache is localized. Please remove all translations first.")
-                    print("sudo rm -rf /var/lib/apt/lists/*Translation%s" % filename[-3:])
-                    return 1
+            apt_lists = "/var/lib/apt/lists"
+            if os.path.isdir(apt_lists):
+                for filename in os.listdir(apt_lists):
+                    if "i18n" in filename and not filename.endswith("-en"):
+                        print("Your APT cache is localized. Please remove all translations first.")
+                        print("sudo rm -rf /var/lib/apt/lists/*Translation%s" % filename[-3:])
+                        return 1
+            else:
+                # On Arch, warn if pacman sync db is missing (e.g., never ran pacman -Sy)
+                pacman_sync = "/var/lib/pacman/sync"
+                if not os.path.isdir(pacman_sync) or not os.listdir(pacman_sync):
+                    print("Pacman sync db not found at /var/lib/pacman/sync — run 'sudo pacman -Sy' first (ACREETIONOS-ARCH).")
         if (os.getenv('LANGUAGE') != "C"):
             print("Please prefix this command with LANGUAGE=C, to prevent content from being translated in the host's locale.")
             return 1
